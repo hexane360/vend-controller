@@ -7,6 +7,7 @@ use std::thread;
 use crossbeam::queue::MsQueue;
 use sysfs_gpio::{Pin,Direction};
 use sysfs_pwm::Pwm;
+use generic_array::arr;
 
 mod socket;
 //mod gpio;
@@ -16,13 +17,27 @@ use socket::handle_client;
 static SOCK_FILE: &str = "./test_socket";
 
 //pin numbers are labeled "BCM" in 'gpio readall'
-static ENABLE_PIN: u32 = 18; //physical pin 12
-static TEST_PIN: u32 = 21;   //physical pin 40
+static ENABLE_PIN: u32 = 0; //physical pin 12, BCM 18
+static RESET_PIN: u32 = 23;
+static STEP_PIN: u32 = 24;
+static SLEEP0_PIN: u32 = 25;
 
 fn main() -> std::io::Result<()> {
 	let queue = MsQueue::new();
 
-	//motor::DriverArray::new();
+	let SLEEP_PINS = arr![u32; 25, 8, 7, 1];
+	let mut m = motor::DriverArray::new(ENABLE_PIN, STEP_PIN, RESET_PIN, arr![u32; SLEEP0_PIN]);
+	m.sleep(0, false);
+	for i in 255..0 {
+		m.run(i);
+		thread::sleep_ms(50);
+	}
+	m.dir_a(motor::Dir::CCW);
+	for i in 255..0 {
+		m.run(i);
+		thread::sleep_ms(50);
+	}
+	m.stop();
 	/*let enable_pin = Pin::new(ENABLE_PIN);
 	enable_pin.export().expect("Failed to access GPIO pin");
 	enable_pin.set_direction(Direction::Low);
@@ -33,14 +48,16 @@ fn main() -> std::io::Result<()> {
 		enable_pin.set_value(0).unwrap();
 	}
 	enable_pin.unexport().expect("Failed to unexport");*/
-	let enable_pin = Pwm::new(1, ENABLE_PIN).expect("Failed to create pin");
+	/*let enable_pin = Pwm::new(0, ENABLE_PIN).expect("Failed to create pin");
 	enable_pin.export().expect("Failed to export");
+	//enable_pin.enable(true).expect("Failed to enable");
+	enable_pin.set_period_ns(5000).expect("Failed to set period");
+	enable_pin.set_duty_cycle_ns(0);
 	enable_pin.enable(true).expect("Failed to enable");
-	enable_pin.set_period_ns(255).expect("Failed to set period");
-	for i in 0..255 {
+	for i in 0..5000 {
 		enable_pin.set_duty_cycle_ns(i);
 		thread::sleep_ms(50);
-	}
+	}*/
 	return Ok(());
 
 	fs::remove_file(SOCK_FILE)?;

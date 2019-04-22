@@ -1,5 +1,5 @@
 [package]
-name = "socket-test"
+name = "vend-controller"
 version = "0.1.0"
 authors = ["hexane360 <colin@gilgenbach.net>"]
 edition = "2018"
