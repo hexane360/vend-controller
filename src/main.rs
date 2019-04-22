@@ -15,13 +15,15 @@ use socket::handle_client;
 
 static SOCK_FILE: &str = "./test_socket";
 
-static ENABLE_PIN: u64 = 21;
+//pin numbers are labeled "BCM" in 'gpio readall'
+static ENABLE_PIN: u32 = 18; //physical pin 12
+static TEST_PIN: u32 = 21;   //physical pin 40
 
 fn main() -> std::io::Result<()> {
 	let queue = MsQueue::new();
 
 	//motor::DriverArray::new();
-	let enable_pin = Pin::new(ENABLE_PIN);
+	/*let enable_pin = Pin::new(ENABLE_PIN);
 	enable_pin.export().expect("Failed to access GPIO pin");
 	enable_pin.set_direction(Direction::Low);
 	for _ in 0..30 {
@@ -30,7 +32,15 @@ fn main() -> std::io::Result<()> {
 		thread::sleep_ms(500);
 		enable_pin.set_value(0).unwrap();
 	}
-	enable_pin.unexport().expect("Failed to unexport");
+	enable_pin.unexport().expect("Failed to unexport");*/
+	let enable_pin = Pwm::new(1, ENABLE_PIN).expect("Failed to create pin");
+	enable_pin.export().expect("Failed to export");
+	enable_pin.enable(true).expect("Failed to enable");
+	enable_pin.set_period_ns(255).expect("Failed to set period");
+	for i in 0..255 {
+		enable_pin.set_duty_cycle_ns(i);
+		thread::sleep_ms(50);
+	}
 	return Ok(());
 
 	fs::remove_file(SOCK_FILE)?;

@@ -43,12 +43,12 @@ pub struct DriverArray<N: ArrayLength<Driver>> {
 	reset_pin: Pin, //low to reset
     drivers: GenericArray<Driver, N>
 }
-impl<N: ArrayLength<Driver> + ArrayLength<Pin> + ArrayLength<bool> + ArrayLength<()>> DriverArray<N> {
-	pub fn new(enable_pin: Pwm, step_pin: Pin, reset_pin: Pin, sleep_pins: GenericArray<Pin, N>) -> Self {
+impl<N: ArrayLength<Driver> + ArrayLength<Pin> + ArrayLength<bool> + ArrayLength<u32> + ArrayLength<()>> DriverArray<N> {
+	pub fn new(enable_pin: u32, step_pin: u32, reset_pin: u32, sleep_pins: GenericArray<u32, N>) -> Self {
 		let drivers = sleep_pins.map(|pin| {
 			Driver {
 				slept: true,
-				sleep_pin: pin
+				sleep_pin: Pin::new(pin as u64)
 			}
 		});
 		let s = DriverArray {
@@ -56,18 +56,27 @@ impl<N: ArrayLength<Driver> + ArrayLength<Pin> + ArrayLength<bool> + ArrayLength
 			step: 1,
 			dir_a: Dir::CW,
 			dir_b: Dir::CW,
-			enable_pin: enable_pin,
-			step_pin: step_pin,
-			reset_pin: reset_pin,
+			enable_pin: Pwm::new(1, enable_pin).expect("Failed to access PWM gpio"),
+			step_pin: Pin::new(step_pin as u64),
+			reset_pin: Pin::new(reset_pin as u64),
 			drivers: drivers,
 		};
 		//initalize pins
-		s.enable_pin.export().expect("Failed to access PWM gpio");
-		s.enable_pin.enable(true).unwrap();
-		s.enable_pin.set_period_ns(255*PERIOD_MULTIPLIER as u32).unwrap();
-		s.set_speed(0);
-		s.step_pin.set_direction(Direction::Low).expect("Failed to access gpio");
-		s.reset_pin.set_direction(Direction::Low).unwrap();
+		|| -> Result<(), sysfs_pwm::Error> {
+			s.enable_pin.export()?;
+			s.enable_pin.enable(true)?;
+			s.enable_pin.set_period_ns(255*PERIOD_MULTIPLIER as u32)?;
+			s.set_speed(0);
+			Ok(())
+		}().expect("Failed to access PWM GPIO");
+
+		|| -> Result<(), sysfs_gpio::Error> {
+			s.step_pin.export()?;
+			s.reset_pin.export()?;
+			s.step_pin.set_direction(Direction::Low)?;
+			s.reset_pin.set_direction(Direction::Low)?;
+			Ok(())
+		}().expect("Failed to access GPIO");
 		for driver in &s.drivers {
 			driver.sleep_pin.set_direction(Direction::Low).unwrap(); //high to wake
 		}
