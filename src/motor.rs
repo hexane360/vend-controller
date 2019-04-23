@@ -64,9 +64,10 @@ impl<N: ArrayLength<Driver> + ArrayLength<Pin> + ArrayLength<bool> + ArrayLength
 		//initalize pins
 		|| -> Result<(), sysfs_pwm::Error> {
 			s.enable_pin.export()?;
-			s.enable_pin.enable(true)?;
+			s.enable_pin.enable(false)?; //needed for unknown reasons
 			s.enable_pin.set_period_ns(255*PERIOD_MULTIPLIER)?;
 			s.set_speed(0);
+			s.enable_pin.enable(true)?;
 			Ok(())
 		}().expect("Failed to access PWM GPIO");
 
@@ -79,15 +80,16 @@ impl<N: ArrayLength<Driver> + ArrayLength<Pin> + ArrayLength<bool> + ArrayLength
 		}().expect("Failed to access GPIO");
 		|| -> Result<(), sysfs_gpio::Error> {
 			for driver in &s.drivers {
-				println!("Init sleep pin {}", driver.sleep_pin.get_pin_num());
 				driver.sleep_pin.export()?;
 				driver.sleep_pin.set_direction(Direction::Low)?; //high to wake
 			}
 			Ok(())
 		}().expect("Failed to access sleep GPIO");
+		s.step_pin.set_value(1).unwrap();
 		s
 	}
 	pub fn reset(&mut self) { //reset drivers and update state
+		println!("reset");
 		self.reset_pin.set_value(0).expect("Reset set failed");
 		thread::sleep(Duration::new(0, 50_000));
 		self.reset_pin.set_value(1).unwrap();
@@ -96,6 +98,7 @@ impl<N: ArrayLength<Driver> + ArrayLength<Pin> + ArrayLength<bool> + ArrayLength
 		self.step = 1;
 	}
 	pub fn restep(&mut self) { //reset and resend step state
+		println!("restep");
 		self.reset_pin.set_value(0).expect("Reset set failed");
 		thread::sleep(Duration::new(0, 50_000));
 		self.reset_pin.set_value(1).unwrap();
@@ -115,6 +118,7 @@ impl<N: ArrayLength<Driver> + ArrayLength<Pin> + ArrayLength<bool> + ArrayLength
 	pub fn sleep(&mut self, driver: usize, sleep: bool) {
 		if self.drivers[driver].slept == sleep {return;}
 		self.drivers[driver].slept = sleep;
+		self.drivers[driver].sleep_pin.set_value(!sleep as u8).expect("Sleep set failed");
 		thread::sleep(Duration::new(0,1_700_000));
 		self.restep();
 	}
@@ -154,9 +158,10 @@ impl<N: ArrayLength<Driver> + ArrayLength<Pin> + ArrayLength<bool> + ArrayLength
 		});
 	}
 	fn step_to(&mut self, end: u8) {
-		self.step(end - self.step + if end < self.step {8} else {0});
+		self.step(end + if end < self.step {8} else {0} - self.step);
 	}
 	fn step(&mut self, num: u8) {
+		println!("stepping {} time(s)", num);
 		for _ in 0..num {
 			self.step_pin.set_value(0).expect("Step set failed");
 			thread::sleep(Duration::new(0, 20000));
@@ -166,11 +171,13 @@ impl<N: ArrayLength<Driver> + ArrayLength<Pin> + ArrayLength<bool> + ArrayLength
 		self.step = (self.step + num)%8;
 	}
 	fn set_speed(&self, speed: u8) {
+		println!("Setting speed to {}", speed);
 		self.enable_pin.set_duty_cycle_ns((255-(speed as u32))*PERIOD_MULTIPLIER).expect("Duty cycle set failed");
 	}
 }
 impl<N: ArrayLength<Driver>> Drop for DriverArray<N> {
 	fn drop(&mut self) {
+		println!("Unexporting pins");
 		self.enable_pin.unexport().unwrap();
 		self.step_pin.unexport().unwrap();
 		self.reset_pin.unexport().unwrap();
