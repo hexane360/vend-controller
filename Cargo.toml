@@ -7,8 +7,16 @@ edition = "2018"
 [dependencies]
 num-derive = "^0.2"
 num-traits = "^0.2"
+itertools = "^0.8"
 crossbeam = "^0.6"
-sysfs_gpio = "^0.5"
 sysfs-pwm = "^0.1"
 generic-array = "^0.13"
+enigo = "0.0.12"
+tokio = "^0.1"
+futures = "^0.1"
 #compiler_builtins = "^0.1"
+
+[dependencies.sysfs_gpio]
+git = "https://github.com/rust-embedded/rust-sysfs-gpio/"
+rev = "409bab143fbf4004613009aef204df7fc0c0ae8f"
+features = ["use_tokio"]

@@ -9,7 +9,7 @@ use generic_array::arr;
 
 mod socket;
 //mod gpio;
-//mod keypad;
+mod keypad;
 mod motor;
 use socket::handle_client;
 
@@ -27,7 +27,9 @@ static ROW_PINS: [u32; 4] = [0, 5, 6, 13];
 fn main() -> std::io::Result<()> {
 	let queue = MsQueue::new();
 
-	//let keypad = keypad::Keypad::new(ROW_PINS, COL_PINS);
+	let keypad = keypad::Keypad::new(ROW_PINS, COL_PINS);
+	keypad.run();
+	println!("After run()");
 	//thread::spawn(|| { keypad.run(); });
 
 	let sleep_pins = arr![u32; 25, 8, 7]; // 1
