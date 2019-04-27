@@ -27,13 +27,14 @@ impl Keypad {
 			let pin = Pin::new(i as u64);
 			pin.export()?;
 			pin.set_direction(Direction::In)?;
+			pin.set_active_low(true)?; //invert pin
 			pin.set_edge(Edge::RisingEdge)?;
 			Ok(pin)
 		}().expect("Failed to initalize row pins")};
 		let col_fn = |i| { || -> Result<Pin, sysfs_gpio::Error> {
 			let pin = Pin::new(i as u64);
 			pin.export()?;
-			pin.set_direction(Direction::High)?;
+			pin.set_direction(Direction::Low)?;
 			Ok(pin)
 		}().expect("Failed to initalize column pins")};
 		Keypad {
