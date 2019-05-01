@@ -9,7 +9,6 @@ use generic_array::arr;
 
 mod socket;
 //mod gpio;
-mod keypad;
 mod motor;
 use socket::handle_client;
 
@@ -21,16 +20,8 @@ static RESET_PIN: u32 = 23;
 static STEP_PIN: u32 = 24;
 static SLEEP0_PIN: u32 = 25;
 
-static COL_PINS: [u32; 3] = [10, 9, 11];
-static ROW_PINS: [u32; 4] = [0, 5, 6, 13];
-
 fn main() -> std::io::Result<()> {
 	let queue = MsQueue::new();
-
-	let keypad = keypad::Keypad::new(ROW_PINS, COL_PINS);
-	keypad.run();
-	println!("After run()");
-	//thread::spawn(|| { keypad.run(); });
 
 	let sleep_pins = arr![u32; 25, 8, 7]; // 1
 	let mut m = motor::DriverArray::new(ENABLE_PIN, STEP_PIN, RESET_PIN, sleep_pins);
@@ -47,7 +38,6 @@ fn main() -> std::io::Result<()> {
 	}
 	println!("stopping!");
 	m.stop();
-	return Ok(());
 
 	fs::remove_file(SOCK_FILE)?;
 	let listener = UnixListener::bind(SOCK_FILE).expect("Couldn't bind socket");
